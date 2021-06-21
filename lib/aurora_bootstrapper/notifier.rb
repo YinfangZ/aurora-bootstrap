@@ -2,8 +2,8 @@ require 'aws-sdk-s3'
 
 module AuroraBootstrapper
   class Notifier
-    def initialize( s3_path: s3_path)
-        @s3_path = s3_path
+    def initialize( s3_path: s3_path_val )
+        @s3_path = s3_path_val
     end
       
     def export_date
