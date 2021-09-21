@@ -10,8 +10,8 @@ jobs:
           docker_layer_caching: true
           version: 18.09.3
       # Load schema cache for inclusion in docker image
-      - attach_workspace:
-          at: db/
+      <!-- - attach_workspace:
+          at: db/ -->
       - run:
           name: Build and Push Docker Image
           command: |
@@ -37,7 +37,7 @@ jobs:
               --build-arg VERSION=${VERSION} \
               --build-arg GIT_REVISION=${GIT_REVISION} \
               .
-            private_registry_base_name="gcr.io/outreach-docker/traffic-cop"
+            private_registry_base_name="gcr.io/outreach-docker/aurora-bootstrap"
             versioned_image_name="${private_registry_base_name}:${VERSION}"
             sha1_image_name="${private_registry_base_name}:${CIRCLE_SHA1}"
             docker tag "${IMAGE_NAME}" "${versioned_image_name}"
