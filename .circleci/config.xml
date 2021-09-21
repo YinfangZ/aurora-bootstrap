@@ -1,0 +1,57 @@
+version: 2
+jobs:
+  build_docker_image:
+    docker:
+      - image: circleci/ruby:2.6
+    steps:
+      - add_ssh_keys
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+          version: 18.09.3
+      # Load schema cache for inclusion in docker image
+      - attach_workspace:
+          at: db/
+      - run:
+          name: Build and Push Docker Image
+          command: |
+            set -ex
+            VERSION=$(".circleci/get-version.sh")
+            IMAGE_NAME="aurora-bootstrap"
+            GIT_REVISION=$(git rev-parse HEAD)
+            # Log into Registry
+            echo ${GCLOUD_SERVICE_ACCOUNT} | docker login \
+              -u _json_key \
+              --password-stdin \
+            https://gcr.io
+            # Set up SSH
+            eval $(ssh-agent)
+            ssh-add -D
+            grep -A 2 github.com ~/.ssh/config | grep IdentityFile | awk '{ print $2 }' | xargs -n 1 ssh-add
+            # Build
+            DOCKER_BUILDKIT=1 docker build \
+              --progress plain \
+              --ssh default \
+              -t "${IMAGE_NAME}" \
+              --file Dockerfile \
+              --build-arg VERSION=${VERSION} \
+              --build-arg GIT_REVISION=${GIT_REVISION} \
+              .
+            private_registry_base_name="gcr.io/outreach-docker/traffic-cop"
+            versioned_image_name="${private_registry_base_name}:${VERSION}"
+            sha1_image_name="${private_registry_base_name}:${CIRCLE_SHA1}"
+            docker tag "${IMAGE_NAME}" "${versioned_image_name}"
+            docker tag "${IMAGE_NAME}" "${private_registry_base_name}"
+            docker tag "${IMAGE_NAME}" "${sha1_image_name}"
+            docker push "${private_registry_base_name}"
+            docker push "${versioned_image_name}"
+            docker push "${sha1_image_name}"   
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - build_docker_image:
+          context: docker-registry
+          filters:
+            branches:
+              only: master
